@@ -34,6 +34,10 @@
     <ClInclude Include="..\..\src\getopts.h" />
     <ClInclude Include="..\..\src\mongoose_sys_porting.h" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Makefile" />
+    <None Include="..\..\README.md" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectName>recrmdir</ProjectName>
     <RootNamespace>recrmdir</RootNamespace>

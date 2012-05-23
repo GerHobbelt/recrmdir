@@ -358,10 +358,10 @@ static int clean_dirtree(const char *dir, const cmd_t *cmd)
 
 
 
-int main(int argc, char **argv)
+int main(int argc, const char **argv)
 {
     unsigned int opt;
-    char *param;
+    const char *param;
     const char *appname = filename(argv[0]);
     cmd_t cmd = {0};
     const char *fpath;
