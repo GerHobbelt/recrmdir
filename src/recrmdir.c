@@ -407,6 +407,12 @@ int main(int argc, const char **argv)
 
     fflush(stdout);
 
+	// default action: clean current directory:
+	if (!infiles)
+	{
+		add_infile(".");
+	}
+
     while (pop_filedef(&fpath))
     {
         fname = filename(fpath);
