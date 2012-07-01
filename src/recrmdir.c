@@ -194,7 +194,7 @@ static void to_unicode(const char *path, wchar_t *wbuf, size_t wbuf_len) {
     WideCharToMultiByte(CP_UTF8, 0, wbuf, (int) wbuf_len, buf2, sizeof(buf2),
                         NULL, NULL);
     if (strcmp(buf, buf2) != 0) {
-	  fprintf(stderr, "Rejecting malicious path: [%s]", buf);
+      fprintf(stderr, "Rejecting malicious path: [%s]", buf);
       wbuf[0] = L'\0';
     }
   }
@@ -203,95 +203,95 @@ static void to_unicode(const char *path, wchar_t *wbuf, size_t wbuf_len) {
 
 
 
-static int clean_dirtree_w(const wchar_t *dir, const wchar_t *dir4err, const cmd_t *cmd) 
+static int clean_dirtree_w(const wchar_t *dir, const wchar_t *dir4err, const cmd_t *cmd)
 {
   wchar_t path[ABSPATH_MAX];
   wchar_t *p;
   HANDLE handle;
   WIN32_FIND_DATAW info;
 
-	wcscpy(path, dir);
+    wcscpy(path, dir);
     (void) wcscat(path, L"\\");
-	p = path + wcslen(path);
+    p = path + wcslen(path);
     (void) wcscat(p, L"*");
 
       handle = FindFirstFileW(path, &info);
-	  if (handle == INVALID_HANDLE_VALUE)
-	  {
-		  return 0;
-	}
-  else 
+      if (handle == INVALID_HANDLE_VALUE)
+      {
+          return 0;
+    }
+  else
   {
-	  int counter = 0;
-	  int failure_heuristic = 5;
+      int counter = 0;
+      int failure_heuristic = 5;
 
         if (cmd->verbose > 1) fprintf(stderr, "Processing: %S\n", (cmd->verbose > 2 ? dir : dir4err));
         else if (cmd->verbose == 1) fputc('.', stderr);
 
-	  while (failure_heuristic)
-	  {
-		  // Do not show current dir
-		  if (wcscmp(info.cFileName, L".") &&
-			  wcscmp(info.cFileName, L".."))
-		  {
-			  if (info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) 
-			  {
-				  int rv;
+      while (failure_heuristic)
+      {
+          // Do not show current dir
+          if (wcscmp(info.cFileName, L".") &&
+              wcscmp(info.cFileName, L".."))
+          {
+              if (info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+              {
+                  int rv;
 
-				  wcscpy(p, info.cFileName);
-				rv = clean_dirtree_w(path, info.cFileName, cmd);
-				if (0 == rv)
-				{
-					if (RemoveDirectoryW(path))
-					{
-				        if (cmd->verbose > 1) fprintf(stderr, "Removed: %S\n", (cmd->verbose > 2 ? path : info.cFileName));
-				        else if (cmd->verbose == 1) fputc('+', stderr);
-					}
-				}
-				else if (rv > 0)
-					counter += rv;
-			  }
-			  else
-			  {
-				  counter++;
-			  }
-		  }
+                  wcscpy(p, info.cFileName);
+                rv = clean_dirtree_w(path, info.cFileName, cmd);
+                if (0 == rv)
+                {
+                    if (RemoveDirectoryW(path))
+                    {
+                        if (cmd->verbose > 1) fprintf(stderr, "Removed: %S\n", (cmd->verbose > 2 ? path : info.cFileName));
+                        else if (cmd->verbose == 1) fputc('+', stderr);
+                    }
+                }
+                else if (rv > 0)
+                    counter += rv;
+              }
+              else
+              {
+                  counter++;
+              }
+          }
 
-		  while (!FindNextFileW(handle, &info) && failure_heuristic)
-			{
-				if (GetLastError() == ERROR_NO_MORE_FILES)
-				{
-					failure_heuristic = 0;
-					break;
-				}
-				failure_heuristic--;
-			  counter++;
-		  }
-	  }
+          while (!FindNextFileW(handle, &info) && failure_heuristic)
+            {
+                if (GetLastError() == ERROR_NO_MORE_FILES)
+                {
+                    failure_heuristic = 0;
+                    break;
+                }
+                failure_heuristic--;
+              counter++;
+          }
+      }
       FindClose(handle);
 
-	// return file counter: when > 0, don't even try to remove the parent dir - optimization
-	return counter;
+    // return file counter: when > 0, don't even try to remove the parent dir - optimization
+    return counter;
   }
 }
 
 
-static int clean_dirtree(const char *dir, const cmd_t *cmd) 
+static int clean_dirtree(const char *dir, const cmd_t *cmd)
 {
   wchar_t wbuf[ABSPATH_MAX];
 
   if (!dir)
-	  return -1;
+      return -1;
 
   to_unicode(dir, wbuf, ARRAY_SIZE(wbuf));
 
   if (wbuf[0])
   {
-	  int rv;
-	  
-	  rv = clean_dirtree_w(wbuf, wbuf, cmd);
+      int rv;
+      
+      rv = clean_dirtree_w(wbuf, wbuf, cmd);
        if (cmd->verbose == 1) fputc('\n', stderr);
-	   return rv;
+       return rv;
   }
   return -1;
 }
@@ -300,7 +300,7 @@ static int clean_dirtree(const char *dir, const cmd_t *cmd)
 
 #else
 
-static int clean_dirtree(const char *dir, const cmd_t *cmd) 
+static int clean_dirtree(const char *dir, const cmd_t *cmd)
 {
   char path[ABSPATH_MAX];
   struct dirent *dp;
@@ -309,14 +309,14 @@ static int clean_dirtree(const char *dir, const cmd_t *cmd)
 
   if ((dirp = opendir(dir)) == NULL) {
     return 0;
-  } 
-  else 
+  }
+  else
   {
-	  int counter = 0;
+      int counter = 0;
 
-    while ((dp = readdir(dirp)) != NULL) 
-	{
-		struct mgstat st;
+    while ((dp = readdir(dirp)) != NULL)
+    {
+        struct mgstat st;
 
       // Do not show current dir
       if (!strcmp(dp->d_name, ".") ||
@@ -325,31 +325,31 @@ static int clean_dirtree(const char *dir, const cmd_t *cmd)
 
       snprintf(path, sizeof(path), "%s%c%s", dir, '/', dp->d_name);
 
-      if (stat(path, &st) != 0) 
-	  {
+      if (stat(path, &st) != 0)
+      {
         memset(&st, 0, sizeof(st));
       }
 
-	  if (S_ISDIR(st.st_mode))
-	  {
-		int rv = clean_dirtree(path);
+      if (S_ISDIR(st.st_mode))
+      {
+        int rv = clean_dirtree(path);
 
-		if (0 == rv)
-		{
-			rmdir(path);
-		}
-		else if (rv > 0)
-		{
-			counter += rv;
-		}
-	  }
-	  else
-		  counter++;
+        if (0 == rv)
+        {
+            rmdir(path);
+        }
+        else if (rv > 0)
+        {
+            counter += rv;
+        }
+      }
+      else
+          counter++;
     }
     (void) closedir(dirp);
 
-	// return file counter: when > 0, don't even try to remove the parent dir - optimization
-	return counter;
+    // return file counter: when > 0, don't even try to remove the parent dir - optimization
+    return counter;
   }
 }
 
@@ -372,9 +372,6 @@ int main(int argc, const char **argv)
 
     for (;;)
     {
-        char *p;
-        unsigned long l;
-
         opt = getopts(opts, &param);
         switch (opt)
         {
@@ -390,9 +387,9 @@ int main(int argc, const char **argv)
             if (cmd.verbose == 0) cmd.verbose = ~0u;
             continue;
 
-		case GETOPTS_PARAMETER:
-			add_infile(param);
-			continue;
+        case GETOPTS_PARAMETER:
+            add_infile(param);
+            continue;
 
         case GETOPTS_UNKNOWN:
             printf("%s: unknown parameter %s\n", appname, param);
@@ -407,11 +404,11 @@ int main(int argc, const char **argv)
 
     fflush(stdout);
 
-	// default action: clean current directory:
-	if (!infiles)
-	{
-		add_infile(".");
-	}
+    // default action: clean current directory:
+    if (!infiles)
+    {
+        add_infile(".");
+    }
 
     while (pop_filedef(&fpath))
     {
@@ -423,22 +420,22 @@ int main(int argc, const char **argv)
 
         if (cmd.verbose) fprintf(stderr, "Processing: %s\n", (cmd.verbose != 2 ? fpath : fname4err));
 
-		clean_dirtree(fpath, &cmd);
-	}
-	
+        clean_dirtree(fpath, &cmd);
+    }
+    
     if (fpath != NULL)
     {
         fname = filename(fpath);
 
-		fname4err = fname;
-		if (!*fname4err)
-			fname4err = fpath;
+        fname4err = fname;
+        if (!*fname4err)
+            fname4err = fpath;
 
-		fprintf(stderr, "*** ERROR: cannot open file '%s' for reading...\n", (cmd.verbose ? fpath : fname4err));
-		exit(EXIT_FAILURE);
-	}
+        fprintf(stderr, "*** ERROR: cannot open file '%s' for reading...\n", (cmd.verbose ? fpath : fname4err));
+        exit(EXIT_FAILURE);
+    }
 
-	if (cmd.verbose) fprintf(stderr, "Processing: ---done---\n");
-	exit(EXIT_SUCCESS);
+    if (cmd.verbose) fprintf(stderr, "Processing: ---done---\n");
+    exit(EXIT_SUCCESS);
 }
 
