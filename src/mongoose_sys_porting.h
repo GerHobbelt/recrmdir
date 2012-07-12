@@ -36,6 +36,25 @@
 #define PATH_MAX FILENAME_MAX
 #endif // __SYMBIAN32__
 
+/*
+ * improve memory debugging on WIN32 by using crtdbg.h (only MSVC
+ * compiler and debug builds!)
+ *
+ * make sure crtdbg.h is loaded before malloc.h!
+ */
+#if defined(_MSC_VER) && (_MSC_VER >= 1400)
+// Studio 2008+
+# if (defined(WIN32) || defined(__WIN32)) && !defined(UNDER_CE)
+#  if defined(DEBUG) || defined(_DEBUG)
+#   ifndef _CRTDBG_MAP_ALLOC
+#    define _CRTDBG_MAP_ALLOC 1
+#   endif
+#  endif
+#  include <crtdbg.h>
+#  include <malloc.h>
+# endif
+#endif
+
 #ifndef _WIN32_WCE // Some ANSI #includes are not available on Windows CE
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -57,6 +76,7 @@
 #if defined(_WIN32) && !defined(__SYMBIAN32__) // Windows specific
 #ifndef _WIN32_WINNT
 #define _WIN32_WINNT 0x0600 // To make it link in VS200x (with IPv6 support from Win2K onwards, with improved support from Vista onwards)
+#pragma message("Warning: _WIN32_WINNT is not set explicitly. Default to support Windows Vista and newer.")
 #endif
 // load winSock2 before windows.h or you won't be able to access to IPv6 goodness due to windows.h loading winsock.h (v1):
 #include <ws2tcpip.h>
@@ -114,8 +134,15 @@
 extern "C" {
 #endif // __cplusplus
 
+#ifndef _OFF_T_DEFINED
 typedef long off_t;
+#elif __STDC__ && defined(_OFF_T_DEFINED)
+typedef _off_t off_t;
+#endif
+
+#ifndef BUFSIZ
 #define BUFSIZ  4096
+#endif
 
 #define errno   ((int)GetLastError())
 #define strerror(x)  _ultoa(x, (char *) _alloca(sizeof(x) *3 ), 10)
@@ -439,15 +466,20 @@ We also check whether someone else has gone before us setting up these C99 defin
 #define pipe(x) _pipe(x, BUFSIZ, _O_BINARY | _O_NOINHERIT)
 #define popen(x, y) _popen(x, y)
 #define pclose(x) _pclose(x)
-#define close(x) _close(x)
+
 #define dlsym(x,y) GetProcAddress((HINSTANCE) (x), (y))
 #define RTLD_LAZY  0
-#define fseeko(x, y, z) fseek((x), (y), (z))
 #if !defined(_POSIX_)
 #define fdopen(x, y) _fdopen((x), (y))
 #endif
-#define write(x, y, z) _write((x), (y), (unsigned) z)
-#define read(x, y, z) _read((x), (y), (unsigned) z)
+#define fseeko(x, y, z) fseek((x), (y), (z))
+
+// prevent collisions / odd replacements outside mongoose.c + mongoose_ex.c:
+#if defined(INSIDE_MONGOOSE_C)
+#define close _close
+#define write _write
+#define read  _read
+#endif
 
 #if (NTDDI_VERSION >= NTDDI_VISTA)
   // Only Windoze Vista (and newer) have inet_ntop(); MingW doesn't seem to provide it though
@@ -539,7 +571,7 @@ int mg_rename(const char* oldname, const char* newname);
 int mg_remove(const char *path);
 int mg_mkdir(const char *path, int mode);
 
-#if defined(__MINGW32__) || defined(__MINGW64__) || 1
+#if defined(__MINGW32__) || defined(__MINGW64__)
 // fixing the 'implicit declaration' warnings as the MingW headers aren't up to snuff:
 #if defined(_DLL) && !defined(_CRTIMP)
 #define _CRTIMP __declspec(dllimport)
@@ -615,6 +647,7 @@ typedef int SOCKET;
 
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
 #define MG_MAX(a, b)      ((a) >= (b) ? (a) : (b))
+#define MG_MIN(a, b)      ((a) <= (b) ? (a) : (b))
 
 /*
  * The following VA_COPY was coded following an example in
@@ -675,13 +708,6 @@ typedef int socklen_t;
 /* buffer size that will fit both IPv4 and IPv6 addresses formatted by ntoa() / ntop() */
 #define SOCKADDR_NTOA_BUFSIZE           42
 
-/* buffer size used when copying data to/from file/socket/... */
-#define DATA_COPY_BUFSIZ                MG_MAX(BUFSIZ, 4096)
-/* buffer size used to load all HTTP headers into: if the client sends more header data than this, we'll barf a hairball! */
-#define HTTP_HEADERS_BUFSIZ             MG_MAX(BUFSIZ, 16384)
-/* buffer size used to extract/decode an SSI command line / file path; hence must be equal or larger than PATH_MAX, at least */
-#define SSI_LINE_BUFSIZ                 MG_MAX(BUFSIZ, PATH_MAX)
-
 
 
 
@@ -722,9 +748,17 @@ int pthread_cond_broadcast(pthread_cond_t *cv);
 int pthread_cond_destroy(pthread_cond_t *cv);
 pthread_t pthread_self(void);
 
+#if !defined(USE_SRWLOCK)
+#if defined(RTL_SRWLOCK_INIT) && (_WIN32_WINNT >= _WIN32_WINNT_VISTA)
+#define USE_SRWLOCK      1
+#else
+#define USE_SRWLOCK      0
+#endif
+#endif
+
 typedef struct {
     unsigned rw: 1;
-#if defined(RTL_SRWLOCK_INIT) // Windows 7 / Server 2008 with the correct header files, i.e. this also 'fixes' MingW casualties
+#if USE_SRWLOCK         // Windows 7 / Server 2008 with the correct header files, i.e. this also 'fixes' MingW casualties
     SRWLOCK lock;
 #else
     pthread_mutex_t mutex;
@@ -735,7 +769,7 @@ typedef void pthread_rwlockattr_t;
 
 int pthread_rwlock_init(pthread_rwlock_t *rwlock, const pthread_rwlockattr_t *attr);
 
-#if defined(RTL_SRWLOCK_INIT) // Windows 7 / Server 2008 with the correct header files, i.e. this also 'fixes' MingW casualties
+#if USE_SRWLOCK         // Windows 7 / Server 2008 with the correct header files, i.e. this also 'fixes' MingW casualties
 #define PTHREAD_RWLOCK_INITIALIZER          { 0, RTL_SRWLOCK_INIT }
 #else
 #define PTHREAD_RWLOCK_INITIALIZER          { 0 }
@@ -782,6 +816,20 @@ static size_t strftime(char *dst, size_t dst_size, const char *fmt,
 #endif
 
 #endif // _WIN32 -- for pthread and time lib support
+
+
+
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
+
+void *mg_malloca(size_t size);
+void mg_freea(void *ptr);
+
+#ifdef __cplusplus
+}
+#endif // __cplusplus
+
 
 
 #undef UNUSED_PARAMETER
