@@ -312,7 +312,7 @@ static int clean_dirtree(const char *dir, const cmd_t *cmd)
   }
   else
   {
-      int counter = 0;
+    int counter = 0;
 
     while ((dp = readdir(dirp)) != NULL)
     {
@@ -342,7 +342,9 @@ static int clean_dirtree(const char *dir, const cmd_t *cmd)
         }
       }
       else
+      {
           counter++;
+      }
     }
     (void) closedir(dirp);
 
