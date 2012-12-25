@@ -316,8 +316,6 @@ static int clean_dirtree(const char *dir, const cmd_t *cmd)
 
     while ((dp = readdir(dirp)) != NULL)
     {
-        struct mgstat st;
-
       // Do not show current dir
       if (!strcmp(dp->d_name, ".") ||
           !strcmp(dp->d_name, ".."))
@@ -332,7 +330,7 @@ static int clean_dirtree(const char *dir, const cmd_t *cmd)
 
       if (S_ISDIR(st.st_mode))
       {
-        int rv = clean_dirtree(path);
+        int rv = clean_dirtree(path, cmd);
 
         if (0 == rv)
         {
